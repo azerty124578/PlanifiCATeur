@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planificateur de Répétition et Agenda</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .container {
+            max-width: 900px;
+        }
+        .card {
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .modal {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Variables de couleur par défaut (Thème Bleu) */
+        :root {
+            --bg-color: #eff6ff; /* blue-100 */
+            --card-bg: #ffffff;
+            --header-text: #1e40af; /* blue-800 */
+            --secondary-text: #60a5fa; /* blue-500 */
+            --primary-btn-bg: #2563eb; /* blue-600 */
+            --primary-btn-hover: #1d4ed8; /* blue-700 */
+            --secondary-btn-bg: #dbeafe; /* blue-200 */
+            --secondary-btn-text: #1e40af; /* blue-700 */
+            --list-item-bg: #f5f7ff; /* blue-50 */
+            --input-border: #93c5fd; /* blue-300 */
+            --input-ring: #3b82f6; /* blue-500 */
+            --h2-color: #1d4ed8; /* blue-700 */
+            --comment-text: #2563eb; /* blue-600 */
+            --comment-bg: #dbeafe; /* blue-100 */
+        }
+
+        /* Thème Rose (appliqué au body) */
+        body.theme-pink {
+            --bg-color: #fce7f3; /* pink-100 */
+            --header-text: #9d174d; /* pink-800 */
+            --secondary-text: #ec4899; /* pink-500 */
+            --primary-btn-bg: #db2777; /* pink-600 */
+            --primary-btn-hover: #be185d; /* pink-700 */
+            --secondary-btn-bg: #fbcfe8; /* pink-200 */
+            --secondary-btn-text: #be185d; /* pink-700 */
+            --list-item-bg: #fdf2f8; /* pink-50 */
+            --input-border: #f9a8d4; /* pink-300 */
+            --input-ring: #ec4899; /* pink-500 */
+            --h2-color: #be185d; /* pink-700 */
+            --comment-text: #db2777; /* pink-600 */
+            --comment-bg: #fce7f3; /* pink-100 */
+        }
+
+        /* Application des variables CSS */
+        .app-bg { background-color: var(--bg-color); }
+        .card { background-color: var(--card-bg); }
+        .header-text { color: var(--header-text); }
+        .secondary-text { color: var(--secondary-text); }
+        .h2-color { color: var(--h2-color); }
+        .btn-primary { 
+            background-color: var(--primary-btn-bg);
+            transition: background-color 0.2s ease-in-out;
+        }
+        .btn-primary:hover { background-color: var(--primary-btn-hover); }
+
+        .btn-secondary {
+            background-color: var(--secondary-btn-bg);
+            color: var(--secondary-btn-text);
+        }
+        .btn-secondary:hover { background-color: var(--secondary-btn-text); color: white; } 
+
+        .input-style {
+            border-color: var(--input-border);
+            transition: all 0.3s ease-in-out;
+        }
+        .input-style:focus {
+            box-shadow: 0 0 0 2px var(--input-ring);
+            border-color: transparent;
+        }
+
+        .list-item-bg { background-color: var(--list-item-bg); }
+        .comment-display-style {
+            color: var(--comment-text);
+            background-color: var(--comment-bg);
+        }
+    </style>
+</head>
+<body class="app-bg p-4 sm:p-8 flex flex-col items-center min-h-screen theme-pink">
+
+    <div id="message-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden modal">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full fade-in">
+            <h3 id="modal-title" class="text-xl font-bold mb-4"></h3>
+            <p id="modal-message" class="text-gray-600 mb-6"></p>
+            <div class="flex justify-end">
+                <button id="modal-ok-btn" class="px-4 py-2 btn-primary text-white rounded-lg focus:outline-none transition-colors">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="comment-display-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden modal">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full fade-in">
+            <h3 class="text-xl font-bold mb-4 header-text">Commentaire</h3>
+            <div class="overflow-y-auto max-h-60 text-gray-600 mb-6 whitespace-pre-wrap break-words">
+                <p id="comment-content"></p>
+            </div>
+            <div class="flex justify-end">
+                <button id="comment-close-btn" class="px-4 py-2 btn-primary text-white rounded-lg focus:outline-none transition-colors">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card p-6 sm:p-8 w-full max-w-lg container">
+        <header class="mb-6 text-center">
+            <h1 class="text-3xl sm:text-4xl font-bold mb-2 header-text">Planificateur de cours</h1>
+            <h1 class="text-3xl sm:text-4xl font-bold mb-2 header-text">ദ്ദി（• ˕ •マ.ᐟ</h1>
+            <p class="text-sm secondary-text">
+                tié un boss le rho !
+            </p>
+        </header>
+
+        <main id="repetition-view" class="space-y-6">
+            <div class="mb-8">
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <input type="text" id="course-input" placeholder="Ajoutez un cours à réviser..."
+                           class="flex-grow p-3 rounded-lg border input-style">
+                    <button id="add-course-btn"
+                            class="w-full sm:w-auto px-6 py-3 btn-primary text-white font-semibold rounded-lg shadow-md active:scale-95 transition-all duration-200 ease-in-out">
+                        Ajouter 🐾
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <h2 class="text-2xl font-semibold mb-4 h2-color">À réviser aujourd'hui ✨</h2>
+                <div id="today-list" class="space-y-3"></div>
+                <p id="no-today-courses" class="text-gray-500 text-center mt-4 hidden">Rien à réviser pour le moment. Félicitations ! 🎉</p>
+            </div>
+
+            <div>
+                <h2 class="text-2xl font-semibold mb-4 h2-color">À venir ⏳</h2>
+                <div id="upcoming-list" class="space-y-3"></div>
+                <p id="no-upcoming-courses" class="text-gray-500 text-center mt-4 hidden">Miaou ! Ajoutez vos premiers cours pour commencer.</p>
+            </div>
+            
+            <div class="mt-8 text-center">
+                <button id="clear-all-repetition-btn" class="px-3 py-1 bg-red-400 text-white text-xs font-semibold rounded-lg shadow-md hover:bg-red-500 hover:scale-105 active:scale-95 transition-all duration-200 ease-in-out">
+                    Tout effacer 🧹
+                </button>
+            </div>
+        </main>
+
+        <section id="agenda-view" class="space-y-6 hidden">
+            <div class="mb-8">
+                <h2 class="text-2xl font-semibold mb-4 h2-color">Ajouter une tâche</h2>
+                <div class="flex flex-col gap-4">
+                    <input type="text" id="task-title" placeholder="Titre de la tâche..."
+                           class="flex-grow p-3 rounded-lg border input-style">
+                    <input type="date" id="task-date"
+                           class="flex-grow p-3 rounded-lg border input-style">
+                    <input type="number" id="task-days-to-do" placeholder="Temps estimé (en jours)"
+                           class="flex-grow p-3 rounded-lg border input-style">
+                    <textarea id="task-comment" placeholder="Commentaire sur la tâche..."
+                              class="flex-grow p-3 rounded-lg border input-style resize-none"></textarea>
+                    <button id="add-task-btn"
+                            class="w-full px-6 py-3 btn-primary text-white font-semibold rounded-lg shadow-md active:scale-95 transition-all duration-200 ease-in-out">
+                        Ajouter la tâche ✅
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button id="show-pending-btn" class="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-300 transition-colors">
+                    Voir les tâches en attente
+                </button>
+            </div>
+
+            <div>
+                <h2 class="text-2xl font-semibold mb-4 h2-color">Tâches à faire</h2>
+                <div id="to-do-list" class="space-y-3"></div>
+                <p id="no-to-do-tasks" class="text-gray-500 text-center mt-4 hidden">Rien à faire pour le moment. 🎉</p>
+            </div>
+            
+            <div id="pending-tasks-section" class="hidden">
+                <h2 class="text-2xl font-semibold mb-4 h2-color">Tâches en attente</h2>
+                <div id="pending-list" class="space-y-3"></div>
+                <p id="no-pending-tasks" class="text-gray-500 text-center mt-4 hidden">Aucune tâche en attente.</p>
+            </div>
+
+            <div class="mt-8 text-center">
+                <button id="clear-all-agenda-btn" class="px-3 py-1 bg-red-400 text-white text-xs font-semibold rounded-lg shadow-md hover:bg-red-500 hover:scale-105 active:scale-95 transition-all duration-200 ease-in-out">
+                    Tout effacer 🧹
+                </button>
+            </div>
+        </section>
+
+        <div class="mt-8 flex justify-end gap-4 flex-wrap w-full">
+            <button id="btn-return" class="hidden px-4 py-2 btn-secondary text-sm font-semibold rounded-lg hover:bg-gray-300 transition-colors">
+                Retour
+            </button>
+            <button id="export-btn" class="px-3 py-1 btn-secondary text-xs font-semibold rounded-lg shadow-md active:scale-95 transition-all duration-200 ease-in-out">
+                Exporter 💾
+            </button>
+            <input type="file" id="import-file" class="hidden" accept=".json">
+            <button id="import-btn" class="px-3 py-1 btn-secondary text-xs font-semibold rounded-lg shadow-md active:scale-95 transition-all duration-200 ease-in-out">
+                Importer 📥
+            </button>
+            <button id="btn-agenda" class="px-4 py-2 btn-primary text-white text-sm font-semibold rounded-lg active:scale-95 transition-all duration-200 ease-in-out">
+                Agenda 🗓️
+            </button>
+            <button id="toggle-theme-btn" class="px-3 py-1 btn-secondary text-xs font-semibold rounded-lg shadow-md active:scale-95 transition-all duration-200 ease-in-out">
+                Basculer le thème 🎨
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        // Clé de stockage unifiée pour toutes les données
+        const STORAGE_KEY = 'unified_app_data';
+        const THEME_KEY = 'app_theme';
+
+        // Constantes pour le planificateur de répétition
+        const REPETITION_INTERVALS = [1, 3, 7, 14, 30, 60, 90]; 
+
+        // Récupération des éléments du DOM
+        const body = document.body;
+        const btnRepetition = document.getElementById('btn-return');
+        const btnAgenda = document.getElementById('btn-agenda');
+        const repetitionView = document.getElementById('repetition-view');
+        const agendaView = document.getElementById('agenda-view');
+        
+        const courseInput = document.getElementById('course-input');
+        const addCourseBtn = document.getElementById('add-course-btn');
+        const todayList = document.getElementById('today-list');
+        const upcomingList = document.getElementById('upcoming-list');
+        const noTodayCourses = document.getElementById('no-today-courses');
+        const noUpcomingCourses = document.getElementById('no-upcoming-courses');
+        const clearAllRepetitionBtn = document.getElementById('clear-all-repetition-btn');
+
+        const taskTitleInput = document.getElementById('task-title');
+        const taskDateInput = document.getElementById('task-date');
+        const taskDaysToDoInput = document.getElementById('task-days-to-do');
+        const taskCommentInput = document.getElementById('task-comment');
+        const addTaskBtn = document.getElementById('add-task-btn');
+        const toDoList = document.getElementById('to-do-list');
+        const pendingList = document.getElementById('pending-list');
+        const showPendingBtn = document.getElementById('show-pending-btn');
+        const pendingTasksSection = document.getElementById('pending-tasks-section');
+        const noToDoTasks = document.getElementById('no-to-do-tasks');
+        const noPendingTasks = document.getElementById('no-pending-tasks');
+        const clearAllAgendaBtn = document.getElementById('clear-all-agenda-btn');
+
+        const exportBtn = document.getElementById('export-btn');
+        const importBtn = document.getElementById('import-btn');
+        const importFile = document.getElementById('import-file');
+        const toggleThemeBtn = document.getElementById('toggle-theme-btn');
+        
+        const messageModal = document.getElementById('message-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalOkBtn = document.getElementById('modal-ok-btn');
+        
+        const commentDisplayModal = document.getElementById('comment-display-modal');
+        const commentContent = document.getElementById('comment-content');
+        const commentCloseBtn = document.getElementById('comment-close-btn');
+
+        // Modèle de données unifiées
+        let unifiedData = {
+            courses: [],
+            tasks: []
+        };
+        
+        let showAllPending = false;
+
+        // Fonctions utilitaires
+        function showMessage(title, message) {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            messageModal.classList.remove('hidden');
+        }
+        modalOkBtn.addEventListener('click', () => {
+            messageModal.classList.add('hidden');
+        });
+
+        // Gestion du stockage local
+        function loadData() {
+            try {
+                const storedData = localStorage.getItem(STORAGE_KEY);
+                if (storedData) {
+                    const parsedData = JSON.parse(storedData);
+                    // Conversion des dates en objets Date
+                    if (parsedData.courses) {
+                        parsedData.courses = parsedData.courses.map(course => ({
+                            ...course,
+                            nextReviewDate: new Date(course.nextReviewDate)
+                        }));
+                    }
+                    if (parsedData.tasks) {
+                        parsedData.tasks = parsedData.tasks.map(task => ({
+                            ...task,
+                            dueDate: new Date(task.dueDate)
+                        }));
+                    }
+                    unifiedData = parsedData;
+                }
+            } catch (e) {
+                console.error("Erreur de chargement des données :", e);
+                showMessage("Erreur", "Impossible de charger les données. Un nouveau fichier a été créé.");
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(unifiedData));
+        }
+
+        // ---------------------------------------------
+        // Fonctions pour le planificateur de répétition
+        // ---------------------------------------------
+
+        function addDays(date, days) {
+            const result = new Date(date);
+            result.setDate(result.getDate() + days);
+            return result;
+        }
+
+        function renderCourses() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            todayList.innerHTML = '';
+            upcomingList.innerHTML = '';
+
+            const todayCourses = unifiedData.courses.filter(course => course.nextReviewDate <= today);
+            const upcomingCourses = unifiedData.courses.filter(course => course.nextReviewDate > today).sort((a, b) => a.nextReviewDate - b.nextReviewDate);
+
+            noTodayCourses.classList.toggle('hidden', todayCourses.length > 0);
+            noUpcomingCourses.classList.toggle('hidden', unifiedData.courses.length > 0);
+
+            if (todayCourses.length > 0) {
+                todayCourses.forEach(course => {
+                    todayList.appendChild(createCourseListItem(course, true));
+                });
+            }
+
+            if (upcomingCourses.length > 0) {
+                upcomingCourses.forEach(course => {
+                    upcomingList.appendChild(createCourseListItem(course, false));
+                });
+            }
+        }
+
+        function createCourseListItem(course, isToday) {
+            const li = document.createElement('div');
+            // Utilisation de la classe CSS variable list-item-bg
+            li.className = `p-4 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center shadow-sm list-item-bg`;
+
+            const reviewDate = course.nextReviewDate.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' });
+            
+            // Création du HTML avec les classes variables
+            li.innerHTML = `
+                <div class="flex-grow">
+                    <div class="font-medium text-gray-800">${escapeHtml(course.name)}</div>
+                    <div class="text-sm text-gray-500 mb-2 sm:mb-0">Prochaine révision : <span class="font-semibold">${reviewDate}</span></div>
+                    ${course.comment ? `<div class="text-xs italic mt-2 p-2 rounded-lg comment-display-style">${escapeHtml(course.comment)}</div>` : ''}
+                </div>
+                <div class="flex flex-row space-x-2 mt-4 sm:mt-0">
+                    <button class="p-2 rounded-lg transition-colors hover:scale-110 active:scale-95 duration-200 ease-in-out hover:bg-gray-200" onclick="editCommentCourse('${escapeHtml(course.name)}')">
+                        <span class="text-xl">📝</span>
+                    </button>
+                    <button class="p-2 rounded-lg transition-colors hover:scale-110 active:scale-95 duration-200 ease-in-out hover:bg-gray-200" onclick="deleteCourse('${escapeHtml(course.name)}')">
+                        <span class="text-xl">🗑️</span>
+                    </button>
+                    ${isToday ? `<button class="px-4 py-2 bg-green-400 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-green-500 hover:scale-105 active:scale-95 transition-all duration-200 ease-in-out shrink-0" onclick="markCourseAsReviewed('${escapeHtml(course.name)}')">
+                        J'ai révisé
+                    </button>` : ''}
+                </div>
+                <div id="comment-editor-course-${escapeHtml(course.name)}" class="w-full mt-4 p-4 rounded-lg hidden comment-bg">
+                    <textarea class="w-full h-24 p-2 rounded-lg border border-gray-300 resize-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-300" placeholder="Écrivez votre commentaire ici..."></textarea>
+                    <div class="flex justify-end mt-2">
+                        <button class="px-4 py-2 text-white text-sm font-semibold rounded-lg btn-primary active:scale-95 transition-all duration-200 ease-in-out">Sauvegarder</button>
+                    </div>
+                </div>
+            `;
+            // Gestionnaire d'événement sur le bouton Sauvegarder dans le HTML dynamique
+            li.querySelector(`#comment-editor-course-${escapeHtml(course.name)} .btn-primary`).onclick = () => saveCommentCourse(course.name);
+
+            return li;
+        }
+
+        addCourseBtn.addEventListener('click', () => {
+            const courseName = courseInput.value.trim();
+            if (courseName === '') {
+                showMessage("Erreur", "Le nom du cours ne peut pas être vide !");
+                return;
+            }
+            if (unifiedData.courses.some(c => c.name === courseName)) {
+                showMessage("Erreur", "Ce cours existe déjà.");
+                return;
+            }
+            unifiedData.courses.push({
+                name: courseName,
+                nextReviewDate: addDays(new Date(), 1),
+                repetitionCount: 0,
+                comment: ''
+            });
+            saveData();
+            courseInput.value = '';
+            renderCourses();
+        });
+
+        window.markCourseAsReviewed = function(courseName) {
+            unifiedData.courses = unifiedData.courses.map(course => {
+                if (course.name === courseName) {
+                    const nextRepetitionCount = course.repetitionCount + 1;
+                    const nextIntervalIndex = Math.min(nextRepetitionCount, REPETITION_INTERVALS.length - 1);
+                    const daysToAdd = REPETITION_INTERVALS[nextIntervalIndex];
+                    return {
+                        ...course,
+                        nextReviewDate: addDays(new Date(), daysToAdd),
+                        repetitionCount: nextRepetitionCount
+                    };
+                }
+                return course;
+            });
+            saveData();
+            renderCourses();
+        }
+
+        window.deleteCourse = function(courseName) {
+            unifiedData.courses = unifiedData.courses.filter(course => course.name !== courseName);
+            saveData();
+            renderCourses();
+        }
+
+        window.editCommentCourse = function(courseName) {
+            // S'assurer que les classes sont mises à jour pour le thème actuel
+            const editor = document.getElementById(`comment-editor-course-${courseName}`);
+            const textarea = editor.querySelector('textarea');
+            const course = unifiedData.courses.find(c => c.name === courseName);
+            if (course) {
+                textarea.value = course.comment;
+            }
+            editor.classList.toggle('hidden');
+        }
+
+        window.saveCommentCourse = function(courseName) {
+            const editor = document.getElementById(`comment-editor-course-${courseName}`);
+            const textarea = editor.querySelector('textarea');
+            const newComment = textarea.value.trim();
+            unifiedData.courses = unifiedData.courses.map(course => {
+                if (course.name === courseName) {
+                    return { ...course, comment: newComment };
+                }
+                return course;
+            });
+            saveData();
+            // Cacher l'éditeur et rafraîchir la liste
+            editor.classList.add('hidden');
+            renderCourses(); 
+        }
+        
+        // Fonction utilitaire pour échapper le HTML pour les attributs onclick
+        function escapeHtml(unsafe) {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
+        window.showComment = function(commentText) {
+            commentContent.textContent = commentText;
+            commentDisplayModal.classList.remove('hidden');
+        }
+
+        commentCloseBtn.addEventListener('click', () => {
+            commentDisplayModal.classList.add('hidden');
+        });
+
+        clearAllRepetitionBtn.addEventListener('click', () => {
+            unifiedData.courses = [];
+            saveData();
+            renderCourses();
+            showMessage("Succès", "Tous les cours ont été effacés.");
+        });
+
+        // ---------------------------------------------
+        // Fonctions pour l'agenda
+        // ---------------------------------------------
+
+        function renderTasks() {
+            toDoList.innerHTML = '';
+            pendingList.innerHTML = '';
+
+            const today = new Date();
+            const oneDay = 1000 * 60 * 60 * 24;
+
+            const tasksSorted = unifiedData.tasks.sort((a, b) => a.dueDate - b.dueDate);
+
+            const toDoTasks = tasksSorted.filter(task => {
+                const daysLeft = Math.ceil((task.dueDate - today) / oneDay);
+                return daysLeft <= task.daysToDo;
+            });
+            
+            const pendingTasks = tasksSorted.filter(task => {
+                const daysLeft = Math.ceil((task.dueDate - today) / oneDay);
+                return daysLeft > task.daysToDo;
+            });
+
+            toDoTasks.forEach(task => {
+                toDoList.appendChild(createTaskListItem(task));
+            });
+            pendingTasks.forEach(task => {
+                pendingList.appendChild(createTaskListItem(task));
+            });
+
+            noToDoTasks.classList.toggle('hidden', toDoTasks.length > 0);
+            noPendingTasks.classList.toggle('hidden', pendingTasks.length > 0);
+
+            if (showAllPending) {
+                pendingTasksSection.classList.remove('hidden');
+                showPendingBtn.textContent = 'Cacher les tâches en attente';
+            } else {
+                pendingTasksSection.classList.add('hidden');
+                showPendingBtn.textContent = 'Voir les tâches en attente';
+            }
+        }
+
+        function createTaskListItem(task) {
+            const li = document.createElement('div');
+            // Utilisation de la classe CSS variable list-item-bg
+            li.className = `p-4 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center shadow-sm list-item-bg`;
+            
+            const formattedDate = task.dueDate.toLocaleDateString('fr-FR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            
+            li.innerHTML = `
+                <div class="flex-grow">
+                    <h3 class="font-medium text-lg text-gray-800">${escapeHtml(task.title)}</h3>
+                    <p class="text-sm text-gray-500 mt-1">Échéance : <span class="font-semibold">${formattedDate}</span></p>
+                    <p class="text-sm text-gray-500">Temps estimé : <span class="font-semibold">${task.daysToDo} jours</span></p>
+                    ${task.comment ? `<div class="text-xs italic mt-2 p-2 rounded-lg comment-display-style">${escapeHtml(task.comment)}</div>` : ''}
+                </div>
+                <div class="flex flex-row space-x-2 mt-4 sm:mt-0">
+                    <button class="p-2 rounded-lg transition-colors hover:scale-110 active:scale-95 duration-200 ease-in-out hover:bg-gray-200" onclick="editCommentTask('${escapeHtml(task.title)}')">
+                        <span class="text-xl">📝</span>
+                    </button>
+                    <button class="p-2 rounded-lg transition-colors hover:scale-110 active:scale-95 duration-200 ease-in-out hover:bg-gray-200" onclick="deleteTask('${escapeHtml(task.title)}')">
+                        <span class="text-xl">🗑️</span>
+                    </button>
+                </div>
+                <div id="comment-editor-task-${escapeHtml(task.title)}" class="w-full mt-4 p-4 rounded-lg hidden comment-bg">
+                    <textarea class="w-full h-24 p-2 rounded-lg border border-gray-300 resize-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-300" placeholder="Écrivez votre commentaire ici..."></textarea>
+                    <div class="flex justify-end mt-2">
+                        <button class="px-4 py-2 text-white text-sm font-semibold rounded-lg btn-primary active:scale-95 transition-all duration-200 ease-in-out">Sauvegarder</button>
+                    </div>
+                </div>
+            `;
+            // Gestionnaire d'événement sur le bouton Sauvegarder dans le HTML dynamique
+            li.querySelector(`#comment-editor-task-${escapeHtml(task.title)} .btn-primary`).onclick = () => saveCommentTask(task.title);
+
+            return li;
+        }
+
+        addTaskBtn.addEventListener('click', () => {
+            const title = taskTitleInput.value.trim();
+            const date = taskDateInput.value;
+            const daysToDo = parseInt(taskDaysToDoInput.value, 10);
+            
+            if (!title || !date || isNaN(daysToDo)) {
+                showMessage("Erreur", "Le titre, la date et le temps estimé sont requis !");
+                return;
+            }
+            if (unifiedData.tasks.some(t => t.title === title)) {
+                showMessage("Erreur", "Cette tâche existe déjà.");
+                return;
+            }
+            
+            unifiedData.tasks.push({
+                title: title,
+                dueDate: new Date(date),
+                daysToDo: daysToDo,
+                comment: taskCommentInput.value.trim()
+            });
+            saveData();
+            taskTitleInput.value = '';
+            taskDateInput.value = '';
+            taskDaysToDoInput.value = '';
+            taskCommentInput.value = '';
+            renderTasks();
+        });
+
+        window.deleteTask = function(taskTitle) {
+            unifiedData.tasks = unifiedData.tasks.filter(task => task.title !== taskTitle);
+            saveData();
+            renderTasks();
+        }
+
+        window.editCommentTask = function(taskTitle) {
+            const editor = document.getElementById(`comment-editor-task-${taskTitle}`);
+            const textarea = editor.querySelector('textarea');
+            const task = unifiedData.tasks.find(t => t.title === taskTitle);
+            if (task) {
+                textarea.value = task.comment;
+            }
+            editor.classList.toggle('hidden');
+        }
+
+        window.saveCommentTask = function(taskTitle) {
+            const editor = document.getElementById(`comment-editor-task-${taskTitle}`);
+            const textarea = editor.querySelector('textarea');
+            const newComment = textarea.value.trim();
+            unifiedData.tasks = unifiedData.tasks.map(task => {
+                if (task.title === taskTitle) {
+                    return { ...task, comment: newComment };
+                }
+                return task;
+            });
+            saveData();
+            editor.classList.add('hidden');
+            renderTasks();
+        }
+        
+        showPendingBtn.addEventListener('click', () => {
+            showAllPending = !showAllPending;
+            renderTasks();
+        });
+
+        clearAllAgendaBtn.addEventListener('click', () => {
+            unifiedData.tasks = [];
+            saveData();
+            renderTasks();
+            showMessage("Succès", "Toutes les tâches de l'agenda ont été effacées.");
+        });
+
+        // ---------------------------------------------
+        // Gestion de la navigation
+        // ---------------------------------------------
+
+        btnAgenda.addEventListener('click', () => {
+            repetitionView.classList.add('hidden');
+            agendaView.classList.remove('hidden');
+            btnAgenda.classList.add('hidden');
+            btnRepetition.classList.remove('hidden');
+            renderTasks();
+        });
+
+        btnRepetition.addEventListener('click', () => {
+            agendaView.classList.add('hidden');
+            repetitionView.classList.remove('hidden');
+            btnRepetition.classList.add('hidden');
+            btnAgenda.classList.remove('hidden');
+            renderCourses();
+        });
+        
+        // ---------------------------------------------
+        // Importation, exportation et thème
+        // ---------------------------------------------
+
+        exportBtn.addEventListener('click', () => {
+            const dataStr = JSON.stringify(unifiedData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'mon-application-donnees.json';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showMessage("Exportation réussie", "Toutes vos données ont été exportées avec succès.");
+        });
+
+        importBtn.addEventListener('click', () => {
+            importFile.click();
+        });
+
+        importFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const importedData = JSON.parse(event.target.result);
+                    // Validation de la structure
+                    if (importedData && importedData.courses && importedData.tasks) {
+                        unifiedData = importedData;
+                        saveData();
+                        loadData(); 
+                        renderCourses();
+                        renderTasks();
+                        showMessage("Importation réussie", "Les données ont été importées avec succès.");
+                    } else {
+                        throw new Error("Structure de fichier invalide.");
+                    }
+                } catch (error) {
+                    console.error("Erreur d'importation :", error);
+                    showMessage("Erreur d'importation", "Le fichier sélectionné est invalide.");
+                }
+            };
+            reader.readAsText(file);
+            // Réinitialiser le champ de fichier pour permettre la réimportation du même fichier
+            e.target.value = null;
+        });
+
+        toggleThemeBtn.addEventListener('click', () => {
+            if (body.classList.contains('theme-pink')) {
+                body.classList.remove('theme-pink');
+                localStorage.setItem(THEME_KEY, 'blue');
+            } else {
+                body.classList.add('theme-pink');
+                localStorage.setItem(THEME_KEY, 'pink');
+            }
+            // Mettre à jour les listes pour appliquer les couleurs dynamiques aux list items
+            renderCourses();
+            renderTasks();
+        });
+
+        // Initialisation au chargement de la page
+        window.addEventListener('load', () => {
+            loadData();
+            
+            const savedTheme = localStorage.getItem(THEME_KEY);
+            // Par défaut en rose comme l'original, sinon thème bleu si sauvegardé
+            if (savedTheme === 'blue') {
+                body.classList.remove('theme-pink');
+            } else {
+                body.classList.add('theme-pink');
+            }
+
+            renderCourses();
+            // Assurez-vous que les classes sont bien appliquées avant le rendu des tâches si l'agenda est ouvert.
+            // On peut appeler renderTasks() même si l'agenda est caché, cela ne fait qu'initialiser les données.
+            // Le problème sera résolu lors du clic sur le bouton agenda.
+        });
+
+    </script>
+</body>
+</html>
