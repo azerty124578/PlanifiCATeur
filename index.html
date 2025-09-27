@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Planificateur de Répétition et Agenda</title>
+    <!-- On charge Tailwind CSS depuis un CDN pour un style rapide et réactif -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,6 +22,7 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
         .modal {
+            /* Utiliser le rose pour le fond semi-transparent si le thème est rose, sinon gris */
             background-color: rgba(0, 0, 0, 0.5);
         }
         .fade-in {
@@ -47,6 +49,7 @@
             --h2-color: #1d4ed8; /* blue-700 */
             --comment-text: #2563eb; /* blue-600 */
             --comment-bg: #dbeafe; /* blue-100 */
+            --danger-color: #dc2626; /* red-600 */
         }
 
         /* Thème Rose (appliqué au body) */
@@ -64,6 +67,7 @@
             --h2-color: #be185d; /* pink-700 */
             --comment-text: #db2777; /* pink-600 */
             --comment-bg: #fce7f3; /* pink-100 */
+            --danger-color: #be185d; /* pink-700 pour le danger */
         }
 
         /* Application des variables CSS */
@@ -72,6 +76,7 @@
         .header-text { color: var(--header-text); }
         .secondary-text { color: var(--secondary-text); }
         .h2-color { color: var(--h2-color); }
+        
         .btn-primary { 
             background-color: var(--primary-btn-bg);
             transition: background-color 0.2s ease-in-out;
@@ -83,6 +88,14 @@
             color: var(--secondary-btn-text);
         }
         .btn-secondary:hover { background-color: var(--secondary-btn-text); color: white; } 
+
+        .btn-danger {
+            background-color: #f87171; /* red-400 */
+            color: white;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .btn-danger:hover { background-color: #ef4444; /* red-500 */ }
+
 
         .input-style {
             border-color: var(--input-border);
@@ -98,10 +111,14 @@
             color: var(--comment-text);
             background-color: var(--comment-bg);
         }
+        .clear-modal-title-color {
+            color: var(--danger-color);
+        }
     </style>
 </head>
 <body class="app-bg p-4 sm:p-8 flex flex-col items-center min-h-screen theme-pink">
 
+    <!-- Modal pour les messages -->
     <div id="message-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden modal">
         <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full fade-in">
             <h3 id="modal-title" class="text-xl font-bold mb-4"></h3>
@@ -111,7 +128,23 @@
             </div>
         </div>
     </div>
+    
+    <!-- NOUVELLE MODALE DE CONFIRMATION -->
+    <div id="clear-confirm-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden modal">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full fade-in">
+            <h3 id="clear-modal-title" class="text-xl font-bold mb-4 clear-modal-title-color">Confirmer la suppression</h3>
+            <p id="clear-modal-message" class="text-gray-600 mb-6">Êtes-vous sûr de vouloir effacer **toutes les données** ? Cette action est irréversible.</p>
+            <div class="flex justify-end gap-3">
+                <button id="clear-confirm-cancel-btn" class="px-4 py-2 btn-secondary text-sm rounded-lg focus:outline-none transition-colors">Annuler</button>
+                <button id="clear-confirm-ok-btn" class="px-4 py-2 btn-danger text-white text-sm font-semibold rounded-lg focus:outline-none transition-colors">
+                    Oui, tout effacer
+                </button>
+            </div>
+        </div>
+    </div>
 
+
+    <!-- Modal pour l'affichage des commentaires longs -->
     <div id="comment-display-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden modal">
         <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full fade-in">
             <h3 class="text-xl font-bold mb-4 header-text">Commentaire</h3>
@@ -124,15 +157,17 @@
         </div>
     </div>
 
+    <!-- Conteneur principal de l'application -->
     <div class="card p-6 sm:p-8 w-full max-w-lg container">
         <header class="mb-6 text-center">
-            <h1 class="text-3xl sm:text-4xl font-bold mb-2 header-text">Planificateur de cours</h1>
+            <h1 class="text-3xl sm:text-4xl font-bold mb-2 header-text">Planificateur de Répétition</h1>
             <h1 class="text-3xl sm:text-4xl font-bold mb-2 header-text">ദ്ദി（• ˕ •マ.ᐟ</h1>
             <p class="text-sm secondary-text">
-                tié un boss le rho !
+                Votre petit ami à quatre pattes pour ne rien oublier !
             </p>
         </header>
 
+        <!-- Section du planificateur de répétition (visible par défaut) -->
         <main id="repetition-view" class="space-y-6">
             <div class="mb-8">
                 <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
@@ -158,12 +193,13 @@
             </div>
             
             <div class="mt-8 text-center">
-                <button id="clear-all-repetition-btn" class="px-3 py-1 bg-red-400 text-white text-xs font-semibold rounded-lg shadow-md hover:bg-red-500 hover:scale-105 active:scale-95 transition-all duration-200 ease-in-out">
+                <button id="clear-all-repetition-btn" class="px-3 py-1 btn-danger text-xs font-semibold rounded-lg shadow-md hover:scale-105 active:scale-95 transition-all duration-200 ease-in-out">
                     Tout effacer 🧹
                 </button>
             </div>
         </main>
 
+        <!-- Section de l'agenda (cachée par défaut) -->
         <section id="agenda-view" class="space-y-6 hidden">
             <div class="mb-8">
                 <h2 class="text-2xl font-semibold mb-4 h2-color">Ajouter une tâche</h2>
@@ -184,7 +220,7 @@
             </div>
 
             <div class="flex justify-end gap-2">
-                <button id="show-pending-btn" class="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-300 transition-colors">
+                <button id="show-pending-btn" class="px-3 py-1 btn-secondary text-xs font-semibold rounded-lg hover:bg-gray-300 transition-colors">
                     Voir les tâches en attente
                 </button>
             </div>
@@ -202,12 +238,13 @@
             </div>
 
             <div class="mt-8 text-center">
-                <button id="clear-all-agenda-btn" class="px-3 py-1 bg-red-400 text-white text-xs font-semibold rounded-lg shadow-md hover:bg-red-500 hover:scale-105 active:scale-95 transition-all duration-200 ease-in-out">
+                <button id="clear-all-agenda-btn" class="px-3 py-1 btn-danger text-xs font-semibold rounded-lg shadow-md hover:scale-105 active:scale-95 transition-all duration-200 ease-in-out">
                     Tout effacer 🧹
                 </button>
             </div>
         </section>
 
+        <!-- Barre de boutons d'action en bas de la page -->
         <div class="mt-8 flex justify-end gap-4 flex-wrap w-full">
             <button id="btn-return" class="hidden px-4 py-2 btn-secondary text-sm font-semibold rounded-lg hover:bg-gray-300 transition-colors">
                 Retour
@@ -249,7 +286,7 @@
         const upcomingList = document.getElementById('upcoming-list');
         const noTodayCourses = document.getElementById('no-today-courses');
         const noUpcomingCourses = document.getElementById('no-upcoming-courses');
-        const clearAllRepetitionBtn = document.getElementById('clear-all-repetition-btn');
+        const clearAllRepetitionBtn = document.getElementById('clear-all-repetition-btn'); // Bouton cours
 
         const taskTitleInput = document.getElementById('task-title');
         const taskDateInput = document.getElementById('task-date');
@@ -262,7 +299,7 @@
         const pendingTasksSection = document.getElementById('pending-tasks-section');
         const noToDoTasks = document.getElementById('no-to-do-tasks');
         const noPendingTasks = document.getElementById('no-pending-tasks');
-        const clearAllAgendaBtn = document.getElementById('clear-all-agenda-btn');
+        const clearAllAgendaBtn = document.getElementById('clear-all-agenda-btn'); // Bouton agenda
 
         const exportBtn = document.getElementById('export-btn');
         const importBtn = document.getElementById('import-btn');
@@ -274,6 +311,12 @@
         const modalMessage = document.getElementById('modal-message');
         const modalOkBtn = document.getElementById('modal-ok-btn');
         
+        // NOUVEAUX ÉLÉMENTS DE LA MODALE DE CONFIRMATION
+        const clearConfirmModal = document.getElementById('clear-confirm-modal');
+        const clearModalMessage = document.getElementById('clear-modal-message');
+        const clearConfirmOkBtn = document.getElementById('clear-confirm-ok-btn');
+        const clearConfirmCancelBtn = document.getElementById('clear-confirm-cancel-btn');
+
         const commentDisplayModal = document.getElementById('comment-display-modal');
         const commentContent = document.getElementById('comment-content');
         const commentCloseBtn = document.getElementById('comment-close-btn');
@@ -285,6 +328,8 @@
         };
         
         let showAllPending = false;
+        // Variable pour stocker la fonction à exécuter après confirmation
+        let pendingClearAction = null; 
 
         // Fonctions utilitaires
         function showMessage(title, message) {
@@ -388,6 +433,7 @@
                         J'ai révisé
                     </button>` : ''}
                 </div>
+                <!-- Utilisation de la classe CSS variable comment-bg -->
                 <div id="comment-editor-course-${escapeHtml(course.name)}" class="w-full mt-4 p-4 rounded-lg hidden comment-bg">
                     <textarea class="w-full h-24 p-2 rounded-lg border border-gray-300 resize-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-300" placeholder="Écrivez votre commentaire ici..."></textarea>
                     <div class="flex justify-end mt-2">
@@ -492,12 +538,25 @@
             commentDisplayModal.classList.add('hidden');
         });
 
+        // ---------------------------------------------
+        // NOUVEAU: Gestionnaire pour effacer tous les cours (avec confirmation)
+        // ---------------------------------------------
         clearAllRepetitionBtn.addEventListener('click', () => {
-            unifiedData.courses = [];
-            saveData();
-            renderCourses();
-            showMessage("Succès", "Tous les cours ont été effacés.");
+            if (unifiedData.courses.length === 0) {
+                showMessage("Rien à effacer", "Il n'y a pas de cours dans votre planificateur à supprimer.");
+                return;
+            }
+
+            clearModalMessage.innerHTML = "Êtes-vous certain de vouloir effacer **tous les cours** de votre planificateur ? Cette action est irréversible.";
+            clearConfirmModal.classList.remove('hidden');
+            pendingClearAction = () => {
+                unifiedData.courses = [];
+                saveData();
+                renderCourses();
+                showMessage("Succès", "Tous les cours ont été effacés.");
+            };
         });
+
 
         // ---------------------------------------------
         // Fonctions pour l'agenda
@@ -644,11 +703,40 @@
             renderTasks();
         });
 
+        // ---------------------------------------------
+        // NOUVEAU: Gestionnaire pour effacer toutes les tâches (avec confirmation)
+        // ---------------------------------------------
         clearAllAgendaBtn.addEventListener('click', () => {
-            unifiedData.tasks = [];
-            saveData();
-            renderTasks();
-            showMessage("Succès", "Toutes les tâches de l'agenda ont été effacées.");
+            if (unifiedData.tasks.length === 0) {
+                showMessage("Rien à effacer", "Il n'y a pas de tâches dans votre agenda à supprimer.");
+                return;
+            }
+
+            clearModalMessage.innerHTML = "Êtes-vous certain de vouloir effacer **toutes les tâches** de votre agenda ? Cette action est irréversible.";
+            clearConfirmModal.classList.remove('hidden');
+            pendingClearAction = () => {
+                unifiedData.tasks = [];
+                saveData();
+                renderTasks();
+                showMessage("Succès", "Toutes les tâches de l'agenda ont été effacées.");
+            };
+        });
+
+        // ---------------------------------------------
+        // Gestion de la modale de confirmation
+        // ---------------------------------------------
+
+        clearConfirmOkBtn.addEventListener('click', () => {
+            if (pendingClearAction) {
+                pendingClearAction(); // Exécute l'action stockée (suppression des cours ou des tâches)
+                pendingClearAction = null;
+            }
+            clearConfirmModal.classList.add('hidden');
+        });
+
+        clearConfirmCancelBtn.addEventListener('click', () => {
+            clearConfirmModal.classList.add('hidden');
+            pendingClearAction = null;
         });
 
         // ---------------------------------------------
@@ -702,7 +790,7 @@
                 try {
                     const importedData = JSON.parse(event.target.result);
                     // Validation de la structure
-                    if (importedData && importedData.courses && importedData.tasks) {
+                    if (importedData && Array.isArray(importedData.courses) && Array.isArray(importedData.tasks)) {
                         unifiedData = importedData;
                         saveData();
                         loadData(); 
@@ -714,7 +802,7 @@
                     }
                 } catch (error) {
                     console.error("Erreur d'importation :", error);
-                    showMessage("Erreur d'importation", "Le fichier sélectionné est invalide.");
+                    showMessage("Erreur d'importation", "Le fichier sélectionné est invalide ou corrompu.");
                 }
             };
             reader.readAsText(file);
@@ -748,9 +836,6 @@
             }
 
             renderCourses();
-            // Assurez-vous que les classes sont bien appliquées avant le rendu des tâches si l'agenda est ouvert.
-            // On peut appeler renderTasks() même si l'agenda est caché, cela ne fait qu'initialiser les données.
-            // Le problème sera résolu lors du clic sur le bouton agenda.
         });
 
     </script>
