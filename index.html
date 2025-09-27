@@ -90,11 +90,18 @@
         .btn-secondary:hover { background-color: var(--secondary-btn-text); color: white; } 
 
         .btn-danger {
-            background-color: #f87171; /* red-400 */
+            background-color: var(--danger-color);
             color: white;
             transition: background-color 0.2s ease-in-out;
         }
-        .btn-danger:hover { background-color: #ef4444; /* red-500 */ }
+        .btn-danger:hover { 
+            /* Utilisation d'une couleur plus foncée pour le survol */
+            background-color: ${
+                document.body.classList.contains('theme-pink') 
+                ? '#9d174d' /* pink-800 pour le hover en mode rose */
+                : '#b91c1c' /* red-700 pour le hover en mode bleu */
+            }; 
+        }
 
 
         .input-style {
@@ -129,7 +136,7 @@
         </div>
     </div>
     
-    <!-- NOUVELLE MODALE DE CONFIRMATION -->
+    <!-- Modale de Confirmation pour Effacer Tout -->
     <div id="clear-confirm-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden modal">
         <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full fade-in">
             <h3 id="clear-modal-title" class="text-xl font-bold mb-4 clear-modal-title-color">Confirmer la suppression</h3>
@@ -393,7 +400,7 @@
             const upcomingCourses = unifiedData.courses.filter(course => course.nextReviewDate > today).sort((a, b) => a.nextReviewDate - b.nextReviewDate);
 
             noTodayCourses.classList.toggle('hidden', todayCourses.length > 0);
-            noUpcomingCourses.classList.toggle('hidden', unifiedData.courses.length > 0);
+            noUpcomingCourses.classList.toggle('hidden', unifiedData.courses.length > 0 || todayCourses.length > 0); // Afficher s'il n'y a rien du tout
 
             if (todayCourses.length > 0) {
                 todayCourses.forEach(course => {
@@ -435,7 +442,7 @@
                 </div>
                 <!-- Utilisation de la classe CSS variable comment-bg -->
                 <div id="comment-editor-course-${escapeHtml(course.name)}" class="w-full mt-4 p-4 rounded-lg hidden comment-bg">
-                    <textarea class="w-full h-24 p-2 rounded-lg border border-gray-300 resize-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-300" placeholder="Écrivez votre commentaire ici..."></textarea>
+                    <textarea class="w-full h-24 p-2 rounded-lg border border-gray-300 resize-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-300" placeholder="Écrivez votre commentaire ici...">${escapeHtml(course.comment)}</textarea>
                     <div class="flex justify-end mt-2">
                         <button class="px-4 py-2 text-white text-sm font-semibold rounded-lg btn-primary active:scale-95 transition-all duration-200 ease-in-out">Sauvegarder</button>
                     </div>
@@ -493,12 +500,11 @@
         }
 
         window.editCommentCourse = function(courseName) {
-            // S'assurer que les classes sont mises à jour pour le thème actuel
             const editor = document.getElementById(`comment-editor-course-${courseName}`);
-            const textarea = editor.querySelector('textarea');
             const course = unifiedData.courses.find(c => c.name === courseName);
             if (course) {
-                textarea.value = course.comment;
+                // S'assurer que le contenu est mis à jour avant d'afficher
+                editor.querySelector('textarea').value = course.comment;
             }
             editor.classList.toggle('hidden');
         }
@@ -539,7 +545,7 @@
         });
 
         // ---------------------------------------------
-        // NOUVEAU: Gestionnaire pour effacer tous les cours (avec confirmation)
+        // Gestionnaire pour effacer tous les cours (avec confirmation)
         // ---------------------------------------------
         clearAllRepetitionBtn.addEventListener('click', () => {
             if (unifiedData.courses.length === 0) {
@@ -547,6 +553,7 @@
                 return;
             }
 
+            // Message spécifique pour le planificateur
             clearModalMessage.innerHTML = "Êtes-vous certain de vouloir effacer **tous les cours** de votre planificateur ? Cette action est irréversible.";
             clearConfirmModal.classList.remove('hidden');
             pendingClearAction = () => {
@@ -571,13 +578,15 @@
 
             const tasksSorted = unifiedData.tasks.sort((a, b) => a.dueDate - b.dueDate);
 
+            // Tâches à faire : le nombre de jours restants est <= au nombre de jours estimés pour la faire
             const toDoTasks = tasksSorted.filter(task => {
-                const daysLeft = Math.ceil((task.dueDate - today) / oneDay);
+                const daysLeft = Math.ceil((task.dueDate.getTime() - today.getTime()) / oneDay);
                 return daysLeft <= task.daysToDo;
             });
             
+            // Tâches en attente : le nombre de jours restants est > au nombre de jours estimés pour la faire
             const pendingTasks = tasksSorted.filter(task => {
-                const daysLeft = Math.ceil((task.dueDate - today) / oneDay);
+                const daysLeft = Math.ceil((task.dueDate.getTime() - today.getTime()) / oneDay);
                 return daysLeft > task.daysToDo;
             });
 
@@ -590,6 +599,12 @@
 
             noToDoTasks.classList.toggle('hidden', toDoTasks.length > 0);
             noPendingTasks.classList.toggle('hidden', pendingTasks.length > 0);
+
+            // Si aucune tâche en cours ou en attente, masquer les messages de "aucune tâche en attente"
+            if (unifiedData.tasks.length === 0) {
+                 noToDoTasks.classList.remove('hidden');
+                 noPendingTasks.classList.add('hidden'); // On ne montre pas celui-là si la liste est vide.
+            }
 
             if (showAllPending) {
                 pendingTasksSection.classList.remove('hidden');
@@ -627,7 +642,7 @@
                     </button>
                 </div>
                 <div id="comment-editor-task-${escapeHtml(task.title)}" class="w-full mt-4 p-4 rounded-lg hidden comment-bg">
-                    <textarea class="w-full h-24 p-2 rounded-lg border border-gray-300 resize-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-300" placeholder="Écrivez votre commentaire ici..."></textarea>
+                    <textarea class="w-full h-24 p-2 rounded-lg border border-gray-300 resize-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-300" placeholder="Écrivez votre commentaire ici...">${escapeHtml(task.comment)}</textarea>
                     <div class="flex justify-end mt-2">
                         <button class="px-4 py-2 text-white text-sm font-semibold rounded-lg btn-primary active:scale-95 transition-all duration-200 ease-in-out">Sauvegarder</button>
                     </div>
@@ -644,8 +659,8 @@
             const date = taskDateInput.value;
             const daysToDo = parseInt(taskDaysToDoInput.value, 10);
             
-            if (!title || !date || isNaN(daysToDo)) {
-                showMessage("Erreur", "Le titre, la date et le temps estimé sont requis !");
+            if (!title || !date || isNaN(daysToDo) || daysToDo <= 0) {
+                showMessage("Erreur", "Le titre, la date et le temps estimé (doit être un nombre positif) sont requis !");
                 return;
             }
             if (unifiedData.tasks.some(t => t.title === title)) {
@@ -675,10 +690,10 @@
 
         window.editCommentTask = function(taskTitle) {
             const editor = document.getElementById(`comment-editor-task-${taskTitle}`);
-            const textarea = editor.querySelector('textarea');
             const task = unifiedData.tasks.find(t => t.title === taskTitle);
             if (task) {
-                textarea.value = task.comment;
+                // S'assurer que le contenu est mis à jour avant d'afficher
+                editor.querySelector('textarea').value = task.comment;
             }
             editor.classList.toggle('hidden');
         }
@@ -704,7 +719,7 @@
         });
 
         // ---------------------------------------------
-        // NOUVEAU: Gestionnaire pour effacer toutes les tâches (avec confirmation)
+        // Gestionnaire pour effacer toutes les tâches (avec confirmation)
         // ---------------------------------------------
         clearAllAgendaBtn.addEventListener('click', () => {
             if (unifiedData.tasks.length === 0) {
@@ -712,6 +727,7 @@
                 return;
             }
 
+            // Message spécifique pour l'agenda
             clearModalMessage.innerHTML = "Êtes-vous certain de vouloir effacer **toutes les tâches** de votre agenda ? Cette action est irréversible.";
             clearConfirmModal.classList.remove('hidden');
             pendingClearAction = () => {
@@ -793,7 +809,7 @@
                     if (importedData && Array.isArray(importedData.courses) && Array.isArray(importedData.tasks)) {
                         unifiedData = importedData;
                         saveData();
-                        loadData(); 
+                        loadData(); // Recharger pour s'assurer que les dates sont des objets Date
                         renderCourses();
                         renderTasks();
                         showMessage("Importation réussie", "Les données ont été importées avec succès.");
@@ -818,9 +834,14 @@
                 body.classList.add('theme-pink');
                 localStorage.setItem(THEME_KEY, 'pink');
             }
-            // Mettre à jour les listes pour appliquer les couleurs dynamiques aux list items
-            renderCourses();
-            renderTasks();
+            // --- CORRECTION: Rafraîchir les listes après changement de thème ---
+            // Ceci est crucial pour appliquer les nouvelles couleurs aux éléments de liste.
+            if (!repetitionView.classList.contains('hidden')) {
+                renderCourses();
+            }
+            if (!agendaView.classList.contains('hidden')) {
+                renderTasks();
+            }
         });
 
         // Initialisation au chargement de la page
@@ -828,7 +849,7 @@
             loadData();
             
             const savedTheme = localStorage.getItem(THEME_KEY);
-            // Par défaut en rose comme l'original, sinon thème bleu si sauvegardé
+            // Par défaut en rose, sinon thème bleu si sauvegardé
             if (savedTheme === 'blue') {
                 body.classList.remove('theme-pink');
             } else {
